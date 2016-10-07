@@ -1,0 +1,155 @@
+<html>
+<head>
+    <title>Simple User App</title>
+
+    <script src="https://polygit.org/polymer+1.4.0/components/webcomponentsjs/webcomponents-lite.js"></script>
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/iron-ajax/iron-ajax.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/iron-flex-layout/iron-flex-layout-classes.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/iron-flex-layout/iron-flex-layout.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/iron-form/iron-form.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/iron-icon/iron-icon.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/iron-icons/iron-icons.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/iron-icons/social-icons.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/neon-animation/neon-animation.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/paper-button/paper-button.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/paper-dialog/paper-dialog.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/paper-icon-button/paper-icon-button.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/paper-input/paper-input.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/paper-styles/demo-pages.html">
+    <link rel="import" href="https://polygit.org/polymer+1.6.0/components/paper-toolbar/paper-toolbar.html">
+
+    <style is="custom-style" include="iron-flex">
+        .bigIcon {
+            --iron-icon-height: 110px;
+            --iron-icon-width: 110px;
+            fill: #a9a9a9;
+        }
+        paper-toolbar {
+            max-width: 350px;
+        }
+        .horizontal-section {
+            max-width: 300px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body unresolved onload="_setupOnLoad(event)">
+
+<dom-module id="user-list">
+
+    <paper-toolbar>
+        <div class="title">Users</div>
+        <paper-icon-button icon="refresh" onclick="_refresh()"></paper-icon-button>
+        <paper-icon-button icon="social:person-add" onclick="addUserDialog.open()">+</paper-icon-button>
+    </paper-toolbar>
+
+    <paper-dialog id="addUserDialog" entry-animation="scale-up-animation" exit-animation="fade-out-animation" with-backdrop>
+        <h2>Add User Form</h2>
+
+        <form is="iron-form" method="POST" content-type="application/json"  action="/users/new" id="addform">
+            <paper-input name="firstName" label="First Name" required></paper-input> <br>
+            <paper-input name="lastName" label="Last Name" required></paper-input> <br>
+            <paper-input name="age" label="Age" required></paper-input> <br>
+            <paper-button raised onclick="_submitAdd(event)">Submit</paper-button>
+        </form>
+    </paper-dialog>
+
+
+    <iron-ajax
+            id="delreq"
+            contentType="application/json"
+            method="DELETE"
+            handle-as="json"
+            on-response="_refresh()" ></iron-ajax>
+
+
+    <!--template-->
+    <div class="vertical-section-container">
+
+        <template is="dom-bind" id="app">
+
+
+            <iron-ajax auto
+                       id="getrequest"
+                       url="/users"
+                       contentType="application/json"
+                       handle-as="json"
+                       method="GET"
+                       last-response="{{ajaxResponse}}"></iron-ajax>
+
+            <template is="dom-repeat" items="[[ajaxResponse]]">
+                <paper-dialog id="updateUserDialog[[item.rowId]]" entry-animation="scale-up-animation" exit-animation="fade-out-animation" with-backdrop>
+                    <h2>Edit User Form</h2>
+                    <form is="iron-form" method="PUT" content-type="application/json" action="/users/[[item.rowId]]" id="updateform">
+                        <paper-input name="firstName" label="First Name" required value="[[item.firstName]]"></paper-input> <br>
+                        <paper-input name="lastName" label="Last Name" required value="[[item.lastName]]"></paper-input> <br>
+                        <paper-input name="age" label="Age" required value="[[item.age]]"></paper-input> <br>
+                        <paper-button raised onclick="_submitUpdate(event)">Submit</paper-button>
+                    </form>
+                </paper-dialog>
+                <div class="horizontal-section">
+                    <div class="layout horizontal">
+                        <iron-icon icon="social:person" class="bigIcon"> </iron-icon>
+                        <div >
+                            <p>First Name: [[item.firstName]]</p>
+                            <p>Last Name: [[item.lastName]]</p>
+                            <p>Age: [[item.age]]</p>
+                        </div>
+                    </div>
+                    <div class="layout horizontal">
+                        <paper-button raised value="[[item.rowId]]" onclick="_promptUpdate(this)">Edit</paper-button>
+                        <paper-button raised value="[[item.rowId]]" onclick="_handleRemove(this)">Delete</paper-button>
+                    </div>
+
+                </div>
+            </template>
+        </template>
+    </div>
+
+
+    <script>
+
+        function _setupOnLoad(event) {
+        }
+
+        function _handleRemove(button) {
+            var userId = button.value;
+            var deleteReq = document.querySelector('#delreq');
+            var newUrl = "/users/" + userId;
+            deleteReq.setAttribute("url", newUrl);
+            deleteReq.generateRequest();
+        }
+
+        function _promptUpdate(button) {
+            var userId = button.value;
+            var str = '#' + 'updateUserDialog' + userId;
+            var updateDialog = document.querySelector(str);
+            updateDialog.open();
+        }
+
+        function _refresh() {
+            var updateReq = document.querySelector('#getrequest');
+            updateReq.generateRequest();
+        }
+
+        function _submitAdd(event) {
+            Polymer.dom(event).localTarget.parentElement.submit();
+            _refresh();
+            var addDialog = document.querySelector('#addUserDialog');
+            _refresh();
+            addDialog.close();
+            _refresh();
+        }
+
+        function _submitUpdate(event) {
+            var form = Polymer.dom(event).localTarget.parentElement;
+            var dialog = form.parentElement;
+            form.submit();
+            dialog.close();
+            _refresh();
+        }
+
+    </script>
+</dom-module>
+</body>
+</html>
